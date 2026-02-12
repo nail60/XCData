@@ -13,11 +13,13 @@ interface SummaryStats {
   median: number | null;
 }
 
-interface SummaryStatsTableProps {
-  siteId: number;
+type SummaryStatsTableProps = {
   dateFrom?: string;
   dateTo?: string;
-}
+} & (
+  | { siteId: number; lat?: undefined; lng?: undefined; radius?: undefined }
+  | { lat: number; lng: number; radius: number; siteId?: undefined }
+);
 
 const ALL_METRICS: Metric[] = [
   "alt_gain",
@@ -28,7 +30,11 @@ const ALL_METRICS: Metric[] = [
   "track_distance",
 ];
 
-export default function SummaryStatsTable({ siteId, dateFrom, dateTo }: SummaryStatsTableProps) {
+export default function SummaryStatsTable(props: SummaryStatsTableProps) {
+  const { siteId, dateFrom, dateTo } = props;
+  const lat = "lat" in props ? props.lat : undefined;
+  const lng = "lng" in props ? props.lng : undefined;
+  const radius = "radius" in props ? props.radius : undefined;
   const [stats, setStats] = useState<SummaryStats[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -42,10 +48,16 @@ export default function SummaryStatsTable({ siteId, dateFrom, dateTo }: SummaryS
           const aggregations = await Promise.all(
             (["sum", "mean", "median"] as const).map(async (agg) => {
               const params = new URLSearchParams({
-                siteId: String(siteId),
                 metric,
                 aggregation: agg,
               });
+              if (siteId != null) {
+                params.set("siteId", String(siteId));
+              } else if (lat != null && lng != null && radius != null) {
+                params.set("lat", String(lat));
+                params.set("lng", String(lng));
+                params.set("radius", String(radius));
+              }
               if (dateFrom) params.set("dateFrom", dateFrom);
               if (dateTo) params.set("dateTo", dateTo);
 
@@ -77,7 +89,7 @@ export default function SummaryStatsTable({ siteId, dateFrom, dateTo }: SummaryS
       setLoading(false);
     }
     fetchAllStats();
-  }, [siteId, dateFrom, dateTo]);
+  }, [siteId, lat, lng, radius, dateFrom, dateTo]);
 
   const fmt = (val: number | null, unit: string) =>
     val !== null ? `${Math.round(val)} ${unit}` : "—";

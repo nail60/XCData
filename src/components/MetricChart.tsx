@@ -15,14 +15,15 @@ import {
 import MetricSelector, { METRIC_LABELS, METRIC_UNITS } from "./MetricSelector";
 import type { Metric, Aggregation, MetricDataPoint } from "@/types";
 
-interface MetricChartProps {
-  siteId: number;
-  siteName: string;
-}
+type MetricChartProps =
+  | { siteId: number; siteName: string; lat?: undefined; lng?: undefined; radius?: undefined; title?: undefined }
+  | { lat: number; lng: number; radius: number; title: string; siteId?: undefined; siteName?: undefined };
 
 const YEAR_COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6"];
 
-export default function MetricChart({ siteId, siteName }: MetricChartProps) {
+export default function MetricChart(props: MetricChartProps) {
+  const { siteId, siteName, lat, lng, radius, title } = props;
+  const chartTitle = siteName ?? title ?? "Area";
   const [metric, setMetric] = useState<Metric>("alt_gain");
   const [aggregation, setAggregation] = useState<Aggregation>("mean");
   const [data, setData] = useState<MetricDataPoint[]>([]);
@@ -37,11 +38,17 @@ export default function MetricChart({ siteId, siteName }: MetricChartProps) {
         const allData: MetricDataPoint[] = [];
         for (const year of selectedYears) {
           const params = new URLSearchParams({
-            siteId: String(siteId),
             metric,
             aggregation,
             year: String(year),
           });
+          if (siteId != null) {
+            params.set("siteId", String(siteId));
+          } else if (lat != null && lng != null && radius != null) {
+            params.set("lat", String(lat));
+            params.set("lng", String(lng));
+            params.set("radius", String(radius));
+          }
           const res = await fetch(`/api/analysis/metrics?${params}`);
           const yearData: MetricDataPoint[] = await res.json();
           allData.push(...yearData);
@@ -53,7 +60,7 @@ export default function MetricChart({ siteId, siteName }: MetricChartProps) {
       setLoading(false);
     }
     fetchData();
-  }, [siteId, metric, aggregation, selectedYears]);
+  }, [siteId, lat, lng, radius, metric, aggregation, selectedYears]);
 
   // Transform data for multi-year overlay: group by month
   const chartData = (() => {
@@ -77,7 +84,7 @@ export default function MetricChart({ siteId, siteName }: MetricChartProps) {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <h3 className="text-lg font-semibold mb-4">{siteName} - Time Series</h3>
+      <h3 className="text-lg font-semibold mb-4">{chartTitle} - Time Series</h3>
 
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <MetricSelector

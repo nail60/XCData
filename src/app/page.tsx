@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import FilterControls from "@/components/FilterControls";
 import SitePanel from "@/components/SitePanel";
 import type { SiteWithStats } from "@/types";
@@ -9,6 +10,7 @@ import type { SiteWithStats } from "@/types";
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 
 export default function Home() {
+  const router = useRouter();
   const [sites, setSites] = useState<SiteWithStats[]>([]);
   const [selectedSite, setSelectedSite] = useState<SiteWithStats | null>(null);
   const [searchLocation, setSearchLocation] = useState<[number, number] | null>(null);
@@ -68,6 +70,21 @@ export default function Home() {
         onSearchQueryChange={setSearchQuery}
         onSearch={handleSearch}
       />
+
+      {searchLocation && (
+        <div className="bg-white border-b border-gray-200 px-4 py-2">
+          <button
+            onClick={() =>
+              router.push(
+                `/area?lat=${searchLocation[0]}&lng=${searchLocation[1]}&radius=${radius}`
+              )
+            }
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+          >
+            Analyze Area ({radius}km)
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1">
